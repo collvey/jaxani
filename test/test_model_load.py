@@ -12,6 +12,7 @@ from jaxani.aev import AEVComputer
 from jaxani.nn import SpeciesConverter
 from jaxani.utils import load_sae
 from jaxani.model import rebuild_model_ensemble
+from test_util.generate_test_checkpoint import generate_test_checkpoint
 from neurochem.parse_resources import parse_neurochem_resources
 
 CKPT_DIR = os.path.join(os.path.dirname(__file__), 'test_ckpts')
@@ -37,6 +38,8 @@ def jax_energy_from_restored_state(test_species, test_coordinates):
   # Computes AEVs
   jax_species, jax_aevs = jax_aev_computer.forward((jax_species, jax_coordinates))
   # Load ensemble model and params from restored state
+  if not os.path.exists(os.path.join(CKPT_DIR, f'{CKPT_PREFIX}0')):
+    generate_test_checkpoint()
   restored_state = checkpoints.restore_checkpoint(ckpt_dir=CKPT_DIR, target=None, prefix=CKPT_PREFIX)
   rebuilt_model_ensemble = rebuild_model_ensemble(restored_state['params'])
   # Calculates potential energy
