@@ -1,10 +1,11 @@
-from flax.training import train_state, checkpoints
+import jax
 import jax.numpy as jnp
-import unittest
 import os
 import sys
 sys.path.append(os.path.join(os.path.dirname(__file__), '../'))
+import time
 
+from flax.training import checkpoints
 from jaxani.constants import Constants
 from jaxani.aev import AEVComputer
 from jaxani.nn import SpeciesConverter
@@ -16,33 +17,57 @@ from neurochem.parse_resources import parse_neurochem_resources
 CKPT_DIR = os.path.join(os.path.dirname(__file__), '../test/test_ckpts')
 CKPT_PREFIX = 'test_ensemble_'
 
+class Timer:
+    def __init__(self, description):
+        self.description = description
+
+    def __enter__(self):
+        self.tic = time.perf_counter()
+
+    def __exit__(self, *exc_info):
+        toc = time.perf_counter()
+        tic = self.tic
+        description = self.description
+        print(f"{description}: {toc - tic:0.4f} seconds")
+
 def jax_energy_from_restored_state(test_species, test_coordinates):
-    jax_species = jnp.array(test_species)
-    jax_coordinates = jnp.array(test_coordinates)
+    # Constant initialization
+    with Timer('Constant Initialization'):
+        jax_species = jnp.array(test_species)
+        jax_coordinates = jnp.array(test_coordinates)
 
-    info_file = 'ani-2x_8x.info'
+        info_file = 'ani-2x_8x.info'
     # Loads info file
-    const_file, sae_file, _ensemble_prefix, _ensemble_size = parse_neurochem_resources(info_file)
+    with Timer('Load Info'):
+        const_file, sae_file, _ensemble_prefix, _ensemble_size = parse_neurochem_resources(info_file)
 
-    consts = Constants(const_file)
-    jax_aev_computer = AEVComputer(**consts)
-    jax_species_converter = SpeciesConverter(consts.species)
-    jax_energy_shifter, _sae_dict = load_sae(sae_file, return_dict=True)
+        consts = Constants(const_file)
+        jax_aev_computer = AEVComputer(**consts)
+        jax_species_converter = SpeciesConverter(consts.species)
+        jax_energy_shifter, _sae_dict = load_sae(sae_file, return_dict=True)
 
     # Converts species from periodic table index to internal ordering scheme
-    jax_species, jax_coordinates = jax_species_converter((
-        jax_species, jax_coordinates))
+    with Timer('Species Conversion'):
+        jax_species, jax_coordinates = jax_species_converter((
+            jax_species, jax_coordinates))
+
     # Computes AEVs
-    jax_species, jax_aevs = jax_aev_computer.forward((jax_species, jax_coordinates))
+    with Timer('Compute AEVs'):
+        jax_species, jax_aevs = jax_aev_computer.forward((jax_species, jax_coordinates))
+
     # Load ensemble model and params from restored state
-    if not os.path.exists(os.path.join(CKPT_DIR, f'{CKPT_PREFIX}0')):
-        generate_test_checkpoint()
-    restored_state = checkpoints.restore_checkpoint(ckpt_dir=CKPT_DIR, target=None, prefix=CKPT_PREFIX)
-    rebuilt_model_ensemble = rebuild_model_ensemble(restored_state['params'])
-    # Calculates potential energy
-    _, total_energy = rebuilt_model_ensemble.apply(restored_state['params'], (jax_species, jax_aevs))
-    # Adds atomic energies
-    total_energy = total_energy + jax_energy_shifter.sae(jax_species)
+    with Timer('Load model and params'):
+        if not os.path.exists(os.path.join(CKPT_DIR, f'{CKPT_PREFIX}0')):
+            generate_test_checkpoint()
+        restored_state = checkpoints.restore_checkpoint(ckpt_dir=CKPT_DIR, target=None, prefix=CKPT_PREFIX)
+        rebuilt_model_ensemble = rebuild_model_ensemble(restored_state['params'])
+
+    with Timer('Energy calculation'):
+        # Calculates potential energy
+        _, total_energy = rebuilt_model_ensemble.apply(restored_state['params'], (jax_species, jax_aevs))
+
+        # Adds atomic energies
+        total_energy = total_energy + jax_energy_shifter.sae(jax_species)
     return total_energy
 
 if __name__ == '__main__':
