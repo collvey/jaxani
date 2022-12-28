@@ -15,7 +15,6 @@ SUPPORTED_INFO_FILES = ['ani-1ccx_8x.info', 'ani-1x_8x.info', 'ani-2x_8x.info']
 def parse_neurochem_resources(info_file_path):
     jaxani_dir = Path(__file__).resolve().parent.parent.as_posix()
     resource_path = os.path.join(jaxani_dir, 'resources/')
-    print(resource_path)
     local_dir = os.path.expanduser('~/.local/jaxani/')
 
     resource_info = os.path.join(resource_path, info_file_path)
