@@ -13,11 +13,6 @@ from torch import tensor
 
 def torch_nonzero(input):
     return tensor(input.tolist()).nonzero()
-
-def jax_nonzero_exp(input):
-  """Replace torch.Tensor.nonzero method with jax equivalent.
-  """
-  return input.nonzero()
   
 class TestNonzero(unittest.TestCase):
     def setUp(self):
@@ -29,20 +24,12 @@ class TestNonzero(unittest.TestCase):
         self.target = random.normal(kt, (42, 16))
 
     @measure_time
-    def testNonzero1d_exp(self):
-        actual = jax_nonzero_exp(self.source1d <= self.target1d)
-
-    # @measure_time
-    # def testNonzero1d_jax(self):
-    #     actual = jax_nonzero(self.source1d <= self.target1d)
+    def testNonzero1d_jax(self):
+        actual = jax_nonzero(self.source1d <= self.target1d)
 
     @measure_time
-    def testNonzero2d_exp(self):
-        actual = jax_nonzero_exp(self.source <= self.target)
-
-    # @measure_time
-    # def testNonzero2d_jax(self):
-    #     actual = jax_nonzero(self.source <= self.target)
+    def testNonzero2d_jax(self):
+        actual = jax_nonzero(self.source <= self.target)
 
     @measure_time
     def testNonzero1d_torch(self):
