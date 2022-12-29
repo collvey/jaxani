@@ -6,7 +6,7 @@ sys.path.append(os.path.join(os.path.dirname(__file__), '../'))
 
 from jaxani.aev import AEVComputer
 from jaxani.nn import SpeciesCoordinates
-from jaxutil.timer import Timer
+from jaxutil.timer import measure_time
 
 class AniAevBenchmark(unittest.TestCase):
     def setUp(self):
@@ -44,19 +44,19 @@ class AniAevBenchmark(unittest.TestCase):
         self.jax_cell = jnp.array(test_cell)
         self.jax_pbc = jnp.array(test_pbc)
 
+    @measure_time
     def testAevRadialLength(self):
-        with Timer('Aev Radial Length'):
-            jax_radial_length = self.jax_aev_computer.radial_length
-      
+        jax_radial_length = self.jax_aev_computer.radial_length
+    
+    @measure_time
     def testAevCalculation_withPbc(self):
-        with Timer('Aev Calculation with PBC'):
-            jax_species, jax_aevs = self.jax_aev_computer.forward(
-                self.jax_species_coordinates, cell=self.jax_cell, pbc=self.jax_pbc)
-      
+        jax_species, jax_aevs = self.jax_aev_computer.forward(
+            self.jax_species_coordinates, cell=self.jax_cell, pbc=self.jax_pbc)
+    
+    @measure_time
     def testAevCalculation_noPbc(self):
-        with Timer('Aev Calculation with no PBC'):
-            jax_species, jax_aevs = self.jax_aev_computer.forward(
-                self.jax_species_coordinates)
+        jax_species, jax_aevs = self.jax_aev_computer.forward(
+            self.jax_species_coordinates)
 
 if __name__ == '__main__':
     suite = unittest.defaultTestLoader.loadTestsFromTestCase(AniAevBenchmark)

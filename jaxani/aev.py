@@ -158,7 +158,6 @@ def neighbor_pairs_nopbc(padding_mask: jnp.ndarray, coordinates: jnp.ndarray, cu
     atom_index12 = p12_all[:, pair_index] + molecule_index
     return atom_index12
 
-@profile
 def neighbor_pairs(padding_mask: jnp.ndarray, coordinates: jnp.ndarray, cell: jnp.ndarray,
                    shifts: jnp.ndarray, cutoff: float) -> Tuple[jnp.ndarray, jnp.ndarray]:
     """Compute pairs of atoms that are neighbors
