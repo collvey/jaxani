@@ -1,9 +1,7 @@
-import jax
 import jax.numpy as jnp
 import os
 import sys
 sys.path.append(os.path.join(os.path.dirname(__file__), '../'))
-import time
 
 from flax.training import checkpoints
 from jaxani.constants import Constants
@@ -11,24 +9,12 @@ from jaxani.aev import AEVComputer
 from jaxani.nn import SpeciesConverter
 from jaxani.utils import load_sae
 from jaxani.model import rebuild_model_ensemble
+from jaxutil.timer import Timer
 from test_util.generate_test_checkpoint import generate_test_checkpoint
 from neurochem.parse_resources import parse_neurochem_resources
 
 CKPT_DIR = os.path.join(os.path.dirname(__file__), '../test/test_ckpts')
 CKPT_PREFIX = 'test_ensemble_'
-
-class Timer:
-    def __init__(self, description):
-        self.description = description
-
-    def __enter__(self):
-        self.tic = time.perf_counter()
-
-    def __exit__(self, *exc_info):
-        toc = time.perf_counter()
-        tic = self.tic
-        description = self.description
-        print(f"{description}: {toc - tic:0.4f} seconds")
 
 def jax_energy_from_restored_state(test_species, test_coordinates):
     # Constant initialization
