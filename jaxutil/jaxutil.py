@@ -1,6 +1,8 @@
 import jax.numpy as jnp
 import jax
 
+from torch import tensor
+
 def jax_index_add_dim0(target, index, source):
   """Replace torch.Tensor.index_add_ method with jax equivalent.
   """
@@ -29,6 +31,11 @@ def jax_nonzero(input):
   """Replace torch.Tensor.nonzero method with jax equivalent.
   """
   return jnp.stack(input.nonzero()).T
+
+def jax_nonzero_torch(input):
+  """Uses torch.Tensor.nonzero method under the hood.
+  """
+  return jnp.asarray(tensor(input.tolist()).nonzero().tolist())
 
 def jax_index_select(input, index, axis):
   """Replace torch.Tensor.index_select method with jax equivalent.
