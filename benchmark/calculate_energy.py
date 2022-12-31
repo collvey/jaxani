@@ -18,8 +18,9 @@ from neurochem.parse_resources import parse_neurochem_resources
 CKPT_DIR = os.path.join(os.path.dirname(__file__), '../test/test_ckpts')
 CKPT_PREFIX = 'test_ensemble_'
 
+@jax.jit
 def jax_energy_from_restored_state(test_coordinates):
-    test_species = [[6, 1, 7, 8, 1]] # static
+    test_species = [[6, 1, 1, 1, 1]] # static
 
     jax_species_raw, jax_coordinates_raw, info_file = constant_initialization(test_species, test_coordinates)
 
@@ -43,7 +44,7 @@ def jax_energy_from_restored_state(test_coordinates):
 @measure_time
 def constant_initialization(test_species, test_coordinates):
     jax_species = jnp.array(test_species)
-    jax_coordinates = jnp.array(test_coordinates)
+    jax_coordinates = test_coordinates
     info_file = 'ani-2x_8x.info'
     return jax_species, jax_coordinates, info_file
 
@@ -87,11 +88,13 @@ def calculate_total_energy(rebuilt_model_ensemble, restored_state, jax_species, 
     return total_energy[0]
 
 if __name__ == '__main__':
-    test_coordinates = [[
+    test_coordinates = jnp.array([[
         [0.03192167, 0.00638559, 0.01301679],
         [-0.83140486, 0.39370209, -0.26395324],
         [-0.66518241, -0.84461308, 0.20759389],
         [0.45554739, 0.54289633, 0.81170881],
-        [0.66091919, -0.16799635, -0.91037834]]]
+        [0.66091919, -0.16799635, -0.91037834]]])
     energy = jax_energy_from_restored_state(test_coordinates)
     print(energy)
+    force = -jax.grad(jax_energy_from_restored_state)(test_coordinates)
+    print(force)
