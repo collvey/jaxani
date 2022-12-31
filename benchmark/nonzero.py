@@ -1,12 +1,12 @@
 import jax
 import jax.numpy as jnp
-import numpy as np
 import unittest
 
 import sys
 import os 
 SCRIPT_DIR = os.path.join(os.path.dirname(__file__), '..')
 sys.path.append(SCRIPT_DIR)
+from jaxutil.cacheutil import clear_caches
 from jaxutil.jaxutil import jax_nonzero, jax_nonzero_torch
 from jaxutil.timer import measure_time
 
@@ -25,6 +25,7 @@ def torch_nonzero(input):
 
 class TestNonzero(unittest.TestCase):
     def setUp(self):
+        clear_caches()
         DIM1 = 42
         DIM2 = 16
         key = random.PRNGKey(0)

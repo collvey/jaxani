@@ -1,4 +1,5 @@
 flax
 lark
 optax
+psutil
 tensorflow
