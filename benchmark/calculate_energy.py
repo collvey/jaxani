@@ -1,9 +1,11 @@
+import jax
 import jax.numpy as jnp
 import os
 import sys
 sys.path.append(os.path.join(os.path.dirname(__file__), '../'))
 
 from flax.training import checkpoints
+from functools import partial
 from jaxani.constants import Constants
 from jaxani.aev import AEVComputer
 from jaxani.nn import SpeciesConverter
@@ -16,7 +18,9 @@ from neurochem.parse_resources import parse_neurochem_resources
 CKPT_DIR = os.path.join(os.path.dirname(__file__), '../test/test_ckpts')
 CKPT_PREFIX = 'test_ensemble_'
 
-def jax_energy_from_restored_state(test_species, test_coordinates):
+def jax_energy_from_restored_state(test_coordinates):
+    test_species = [[6, 1, 7, 8, 1]] # static
+
     jax_species_raw, jax_coordinates_raw, info_file = constant_initialization(test_species, test_coordinates)
 
     # Loads info file
@@ -80,15 +84,14 @@ def calculate_total_energy(rebuilt_model_ensemble, restored_state, jax_species, 
 
     # Adds atomic energies
     total_energy = total_energy + jax_energy_shifter.sae(jax_species)
-    return total_energy
+    return total_energy[0]
 
 if __name__ == '__main__':
-    test_species = [[6, 1, 7, 8, 1]]
     test_coordinates = [[
         [0.03192167, 0.00638559, 0.01301679],
         [-0.83140486, 0.39370209, -0.26395324],
         [-0.66518241, -0.84461308, 0.20759389],
         [0.45554739, 0.54289633, 0.81170881],
         [0.66091919, -0.16799635, -0.91037834]]]
-    energy = jax_energy_from_restored_state(test_species, test_coordinates)
+    energy = jax_energy_from_restored_state(test_coordinates)
     print(energy)
