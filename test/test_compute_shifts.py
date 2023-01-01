@@ -32,7 +32,7 @@ class AniComputeShiftTest(unittest.TestCase):
 
         jax_shifts = compute_shifts(
             jax_cell,
-            True,
+            (True, True, True),
             cut_off).astype(jnp.int64).tolist()
 
         assert(len(jax_shifts) == len(torch_shifts))
@@ -48,7 +48,7 @@ class AniComputeShiftTest(unittest.TestCase):
 
         jax_shifts = compute_shifts(
             jax_cell,
-            False,
+            (False, False, False),
             cut_off).astype(jnp.int64).tolist()
 
         assert(len(jax_shifts) == len(torch_shifts))

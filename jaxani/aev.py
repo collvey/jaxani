@@ -21,18 +21,18 @@ class SpeciesAEV(NamedTuple):
     aevs: jnp.ndarray
 
 @partial(jax.jit, static_argnums=(0,1,2,))
-def compute_shifts(cell: Tuple[int, int, int], pbc: bool, cutoff: float) -> jnp.ndarray:
+def compute_shifts(cell: Tuple[int, int, int], pbc: Tuple[bool, bool, bool], cutoff: float) -> jnp.ndarray:
     """Compute the shifts of unit cell along the given cell vectors to make it
     large enough to contain all pairs of neighbor atoms with PBC under
     consideration
 
     Arguments:
-        cell (:class:`jnp.ndarray`): ndarray of shape (3,) of the three
+        cell (:class:`Tuple[int, int, int]`): tuple of shape (3,) of the three
         sizes defining unit cell:
-            ndarray([[x1, y1, z1], [x2, y2, z2], [x3, y3, z3]])
+            (cell_x, cell_y, cell_z)
         cutoff (float): the cutoff inside which atoms are considered pairs
-        pbc (:class:`np.ndarray`): boolean storing if pbc is enabled for all 
-            directions.
+        pbc (:class:`Tuple[bool, bool, bool]`): boolean storing if pbc is enabled for each 
+            direction.
 
     Returns:
         :class:`jnp.ndarray`: long ndarray of shifts. the center cell and
@@ -482,7 +482,7 @@ class AEVComputer():
 
     def forward(self, input_: Tuple[jnp.ndarray, jnp.ndarray],
                 cell: Optional[Tuple[int, int, int]] = None,
-                pbc: Optional[bool] = False) -> SpeciesAEV:
+                pbc: Optional[Tuple[bool, bool, bool]] = False) -> SpeciesAEV:
         """Compute AEVs
 
         Arguments:

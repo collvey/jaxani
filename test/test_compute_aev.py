@@ -44,7 +44,7 @@ class AniAevTest(unittest.TestCase):
       self.jax_species_coordinates = SpeciesCoordinates(
           species=self.jax_species, coordinates=self.jax_coordinates)
       self.jax_cell = tuple(np.diag(test_cell))
-      self.jax_pbc = test_pbc[0]
+      self.jax_pbc = tuple(test_pbc)
 
       torch_consts = {
           'Rcr': 5.1, 
