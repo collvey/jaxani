@@ -43,24 +43,24 @@ def compute_shifts(cell: Tuple[int, int, int], pbc: bool, cutoff: float) -> jnp.
     inv_distances = np.linalg.norm(reciprocal_cell, axis=1)
     num_repeats = np.ceil(cutoff * inv_distances).astype(np.int64)
     num_repeats = np.where(pbc, num_repeats, np.zeros(num_repeats.shape))
-    long_shifts = propagate_shifts_from_repeats(num_repeats[0], num_repeats[1], num_repeats[2])
+    long_shifts = propagate_shifts_from_repeats(tuple(num_repeats))
     return long_shifts
 
-@partial(jax.jit, static_argnums=(0,1,2))
-def propagate_shifts_from_repeats(num_repeats_x: int, num_repeats_y: int, num_repeats_z: int):
+@partial(jax.jit, static_argnums=(0,))
+def propagate_shifts_from_repeats(num_repeats: Tuple[int, int, int]):
     long_shifts = jnp.concatenate([
         jnp.mgrid[
-            1:num_repeats_x + 1, 
-            -num_repeats_y:num_repeats_y + 1, 
-            -num_repeats_z:num_repeats_z + 1].reshape(3, -1).T,
+            1:num_repeats[0] + 1, 
+            -num_repeats[1]:num_repeats[1] + 1, 
+            -num_repeats[2]:num_repeats[2] + 1].reshape(3, -1).T,
         jnp.mgrid[
             0:1, 
-            1:num_repeats_y + 1, 
-            -num_repeats_z:num_repeats_z + 1].reshape(3, -1).T,
+            1:num_repeats[1] + 1, 
+            -num_repeats[2]:num_repeats[2] + 1].reshape(3, -1).T,
         jnp.mgrid[
             0:1, 
             0:1, 
-            1:num_repeats_z + 1].reshape(3, -1).T,
+            1:num_repeats[2] + 1].reshape(3, -1).T,
     ])
     return long_shifts
 
@@ -481,7 +481,7 @@ class AEVComputer():
         return self.Rcr, self.EtaR, self.ShfR, self.Rca, self.ShfZ, self.EtaA, self.Zeta, self.ShfA
 
     def forward(self, input_: Tuple[jnp.ndarray, jnp.ndarray],
-                cell: Optional[np.ndarray] = None,
+                cell: Optional[Tuple[int, int, int]] = None,
                 pbc: Optional[bool] = False) -> SpeciesAEV:
         """Compute AEVs
 
@@ -505,12 +505,12 @@ class AEVComputer():
                 If you want to apply periodic boundary conditions, then the input
                 would be a tuple of two tensors (species, coordinates) and two keyword
                 arguments `cell=...` , and `pbc=...` where species and coordinates are
-                the same as described above, cell is a tensor of shape (3, ) of the
+                the same as described above, cell is a tuple of shape (3, ) of the
                 three sizes of the unit cell:
 
                 .. code-block:: python
 
-                    tensor([cell_x, cell_y, cell_z])
+                    (cell_x, cell_y, cell_z)
 
                 and pbc is boolean storing if pbc is enabled
                 for all directions.
