@@ -46,7 +46,7 @@ class AniAevBenchmark(unittest.TestCase):
         self.jax_species_coordinates = SpeciesCoordinates(
             species=self.jax_species, coordinates=self.jax_coordinates)
         self.jax_cell = np.diag(test_cell)
-        self.jax_pbc = np.array(test_pbc)
+        self.jax_pbc = test_pbc[0]
 
         # Setup for torch
         torch_consts = {
