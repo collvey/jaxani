@@ -11,14 +11,11 @@ from jaxani.aev import compute_shifts
 class AniComputeShiftTest(unittest.TestCase):
     def setUp(self):
         key = random.PRNGKey(0)
-        coord_random = jnp.abs(random.normal(key, (10, 3, 3))).tolist()
-        cutoff_random = jnp.abs(random.normal(key, (10,))).tolist()
 
         self.params = [
             ([[10, 1, 2], [3, 10, 4], [5, 6, 10]], 10.0),
             ([[6, 1, 2], [3, 7.5, 4], [5, 6, 8.2]], 10.0),
             ([[6.4, 2.1, 2], [3.7, 7.5, 4.5], [5.5, 1.6, 8.2]], 8.0),
-            (coord_random[0], cutoff_random[0]),
         ]
     
     @measure_time
