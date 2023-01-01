@@ -1,4 +1,5 @@
 import jax.numpy as jnp
+import numpy as np
 import unittest
 import os
 import sys
@@ -44,8 +45,8 @@ class AniAevBenchmark(unittest.TestCase):
         self.jax_coordinates = jnp.array(test_coordinates)
         self.jax_species_coordinates = SpeciesCoordinates(
             species=self.jax_species, coordinates=self.jax_coordinates)
-        self.jax_cell = jnp.array(test_cell)
-        self.jax_pbc = jnp.array(test_pbc)
+        self.jax_cell = np.diag(test_cell)
+        self.jax_pbc = np.array(test_pbc)
 
         # Setup for torch
         torch_consts = {

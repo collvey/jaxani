@@ -1,8 +1,10 @@
+from functools import partial
 from typing import NamedTuple, Optional, Tuple
 
 import jax.numpy as jnp
 import jax
 import math
+import numpy as np
 
 # Enable support double precision
 # See https://github.com/google/jax#current-gotchas
@@ -18,7 +20,8 @@ class SpeciesAEV(NamedTuple):
     species: jnp.ndarray
     aevs: jnp.ndarray
 
-def compute_shifts(cell: jnp.ndarray, pbc: jnp.ndarray, cutoff: float) -> jnp.ndarray:
+@partial(jax.jit, static_argnums=(0,1,2,3,4,))
+def compute_shifts(cell_x: int, cell_y: int, cell_z: int, pbc: bool, cutoff: float) -> jnp.ndarray:
     """Compute the shifts of unit cell along the given cell vectors to make it
     large enough to contain all pairs of neighbor atoms with PBC under
     consideration
@@ -28,31 +31,38 @@ def compute_shifts(cell: jnp.ndarray, pbc: jnp.ndarray, cutoff: float) -> jnp.nd
         vectors defining unit cell:
             ndarray([[x1, y1, z1], [x2, y2, z2], [x3, y3, z3]])
         cutoff (float): the cutoff inside which atoms are considered pairs
-        pbc (:class:`jnp.ndarray`): boolean vector of size 3 storing
-            if pbc is enabled for that direction.
+        pbc (:class:`np.ndarray`): boolean storing if pbc is enabled for all 
+            directions.
 
     Returns:
         :class:`jnp.ndarray`: long ndarray of shifts. the center cell and
             symmetric cells are not included.
     """
-    reciprocal_cell = jnp.linalg.inv(cell).T
-    inv_distances = jnp.linalg.norm(reciprocal_cell, axis=1)
-    num_repeats = jnp.ceil(cutoff * inv_distances).astype(jnp.int64)
-    num_repeats = jnp.where(pbc, num_repeats, jnp.zeros(num_repeats.shape))
-    return jnp.concatenate([
+    cell = np.array([[cell_x, 0, 0],[0, cell_y, 0],[0, 0, cell_z]])
+    reciprocal_cell = np.linalg.inv(cell).T
+    inv_distances = np.linalg.norm(reciprocal_cell, axis=1)
+    num_repeats = np.ceil(cutoff * inv_distances).astype(np.int64)
+    num_repeats = np.where(pbc, num_repeats, np.zeros(num_repeats.shape))
+    long_shifts = propagate_shifts_from_repeats(num_repeats[0], num_repeats[1], num_repeats[2])
+    return long_shifts
+
+@partial(jax.jit, static_argnums=(0,1,2))
+def propagate_shifts_from_repeats(num_repeats_x: int, num_repeats_y: int, num_repeats_z: int):
+    long_shifts = jnp.concatenate([
         jnp.mgrid[
-            1:num_repeats[0] + 1, 
-            -num_repeats[1]:num_repeats[1] + 1, 
-            -num_repeats[2]:num_repeats[2] + 1].reshape(3, -1).T,
+            1:num_repeats_x + 1, 
+            -num_repeats_y:num_repeats_y + 1, 
+            -num_repeats_z:num_repeats_z + 1].reshape(3, -1).T,
         jnp.mgrid[
             0:1, 
-            1:num_repeats[1] + 1, 
-            -num_repeats[2]:num_repeats[2] + 1].reshape(3, -1).T,
+            1:num_repeats_y + 1, 
+            -num_repeats_z:num_repeats_z + 1].reshape(3, -1).T,
         jnp.mgrid[
             0:1, 
             0:1, 
-            1:num_repeats[2] + 1].reshape(3, -1).T,
+            1:num_repeats_z + 1].reshape(3, -1).T,
     ])
+    return long_shifts
 
 def triu_index(num_species: int) -> jnp.ndarray:
     species1, species2 = jax_unbind(jax_triu_indices(num_species, num_species), 0)
@@ -86,15 +96,9 @@ def compute_aev(species: jnp.ndarray, coordinates: jnp.ndarray, triu_index: jnp.
 
     # PBC calculation is bypassed if there are no shifts
     if cell_shifts is None:
-        atom_index12 = neighbor_pairs_nopbc(species == -1, coordinates_, Rcr)
-        selected_coordinates = jnp.take(coordinates, atom_index12.reshape(-1), axis=0).reshape(2, -1, 3)
-        vec = selected_coordinates[0] - selected_coordinates[1]
+        atom_index12, vec = adjust_pair_nopbc(species, coordinates, Rcr, coordinates_)
     else:
-        cell, shifts = cell_shifts
-        atom_index12, shifts = neighbor_pairs(species == -1, coordinates_, cell, shifts, Rcr)
-        shift_values = shifts.astype(cell.dtype) @ cell
-        selected_coordinates = jnp.take(coordinates, atom_index12.reshape(-1), 0).reshape(2, -1, 3)
-        vec = selected_coordinates[0] - selected_coordinates[1] + shift_values
+        atom_index12, vec = adjust_pair_pbc(species, coordinates, cell_shifts, Rcr, coordinates_)
 
     species = species.flatten()
     species12 = species[atom_index12]
@@ -130,6 +134,25 @@ def compute_aev(species: jnp.ndarray, coordinates: jnp.ndarray, triu_index: jnp.
     angular_aev = angular_aev.at[index].add(angular_terms_)
     angular_aev = angular_aev.reshape(num_molecules, num_atoms, angular_length)
     return jnp.concatenate([radial_aev, angular_aev], axis=-1)
+
+def adjust_pair_nopbc(species, coordinates, Rcr, coordinates_):
+    atom_index12 = neighbor_pairs_nopbc(species == -1, coordinates_, Rcr)
+    selected_coordinates = jnp.take(coordinates, atom_index12.reshape(-1), axis=0).reshape(2, -1, 3)
+    vec = selected_coordinates[0] - selected_coordinates[1]
+    return atom_index12, vec
+
+def adjust_pair_pbc(species, coordinates, cell_shifts, Rcr, coordinates_):
+    # print('coordinates shape: ', coordinates.shape)
+    cell, shifts = cell_shifts
+    atom_index12, shifts = neighbor_pairs(species == -1, coordinates_, cell, shifts, Rcr)
+    # print('atom_index12: ', atom_index12)
+    # print('shifts shape: ', shifts.shape)
+    shift_values = shifts.astype(cell.dtype) @ cell
+    selected_coordinates = jnp.take(coordinates, atom_index12.reshape(-1), 0).reshape(2, -1, 3)
+    # print('selected_coordinates shape: ', selected_coordinates.shape)
+    vec = selected_coordinates[0] - selected_coordinates[1] + shift_values
+    # print('vec: ', vec)
+    return atom_index12, vec
 
 def neighbor_pairs_nopbc(padding_mask: jnp.ndarray, coordinates: jnp.ndarray, cutoff: float) -> jnp.ndarray:
     """Compute pairs of atoms that are neighbors (doesn't use PBC)
@@ -405,9 +428,9 @@ class AEVComputer():
         # Set up default cell and compute default shifts.
         # These values are used when cell and pbc switch are not given.
         cutoff = max(self.Rcr, self.Rca)
-        default_cell = jnp.eye(3, dtype=self.EtaR.dtype)
-        default_pbc = jnp.zeros(3, dtype=bool)
-        default_shifts = compute_shifts(default_cell, default_pbc, cutoff)
+        default_cell = np.ones(3)
+        default_pbc = False
+        default_shifts = compute_shifts(*default_cell, default_pbc, cutoff)
         # self.register_buffer('default_cell', default_cell)
         # self.register_buffer('default_shifts', default_shifts)
         self.default_cell = default_cell
@@ -457,8 +480,8 @@ class AEVComputer():
         return self.Rcr, self.EtaR, self.ShfR, self.Rca, self.ShfZ, self.EtaA, self.Zeta, self.ShfA
 
     def forward(self, input_: Tuple[jnp.ndarray, jnp.ndarray],
-                cell: Optional[jnp.ndarray] = None,
-                pbc: Optional[jnp.ndarray] = None) -> SpeciesAEV:
+                cell: Optional[np.ndarray] = None,
+                pbc: Optional[bool] = False) -> SpeciesAEV:
         """Compute AEVs
 
         Arguments:
@@ -481,17 +504,15 @@ class AEVComputer():
                 If you want to apply periodic boundary conditions, then the input
                 would be a tuple of two tensors (species, coordinates) and two keyword
                 arguments `cell=...` , and `pbc=...` where species and coordinates are
-                the same as described above, cell is a tensor of shape (3, 3) of the
-                three vectors defining unit cell:
+                the same as described above, cell is a tensor of shape (3, ) of the
+                three sizes of the unit cell:
 
                 .. code-block:: python
 
-                    tensor([[x1, y1, z1],
-                            [x2, y2, z2],
-                            [x3, y3, z3]])
+                    tensor([cell_x, cell_y, cell_z])
 
-                and pbc is boolean vector of size 3 storing if pbc is enabled
-                for that direction.
+                and pbc is boolean storing if pbc is enabled
+                for all directions.
 
         Returns:
             NamedTuple: Species and AEVs. species are the species from the input
@@ -502,12 +523,14 @@ class AEVComputer():
         assert species.shape == coordinates.shape[:-1]
         assert coordinates.shape[-1] == 3
 
-        if cell is None and pbc is None:
+        if cell is None and not pbc:
             aev = compute_aev(species, coordinates, self.triu_index, self.constants(), self.sizes, None)
         else:
             assert (cell is not None and pbc is not None)
             cutoff = max(self.Rcr, self.Rca)
-            shifts = compute_shifts(cell, pbc, cutoff)
+            cell_x, cell_y, cell_z = cell
+            shifts = compute_shifts(cell_x, cell_y, cell_z, pbc, cutoff)
+            cell = jnp.array([[cell_x, 0, 0],[0, cell_y, 0],[0, 0, cell_z]])
             aev = compute_aev(species, coordinates, self.triu_index, self.constants(), self.sizes, (cell, shifts))
 
         return SpeciesAEV(species, aev)

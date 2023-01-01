@@ -13,25 +13,25 @@ class AniComputeShiftTest(unittest.TestCase):
         key = random.PRNGKey(0)
 
         self.params = [
-            ([[10, 1, 2], [3, 10, 4], [5, 6, 10]], 10.0),
-            ([[6, 1, 2], [3, 7.5, 4], [5, 6, 8.2]], 10.0),
-            ([[6.4, 2.1, 2], [3.7, 7.5, 4.5], [5.5, 1.6, 8.2]], 8.0),
+            ([[10, 0, 0], [0, 10, 0], [0, 0, 10]], [10, 10, 10], 10.0),
+            ([[6, 0, 0], [0, 7.5, 0], [0, 0, 8.2]], [6, 7.5, 8.2], 10.0),
+            ([[6.4, 0, 0], [0, 7.5, 0], [0, 0, 8.2]], [6, 7.5, 8.2], 8.0),
         ]
     
     @measure_time
     def testComputeShiftsMatch_withPbc(self):
-        for test_cell, cut_off in self.params:
+        for test_cell, jax_cell, cut_off in self.params:
             jax_shifts = compute_shifts(
-                jnp.array(test_cell),
-                jnp.array([True, True, True]),
+                *jax_cell,
+                True,
                 cut_off).astype(jnp.int64).tolist()
     
     @measure_time
     def testComputeShiftsMatch_noPbc(self):
-        for test_cell, cut_off in self.params:
+        for test_cell, jax_cell, cut_off in self.params:
             jax_shifts = compute_shifts(
-                jnp.array(test_cell),
-                jnp.array([False, False, False]),
+                *jax_cell,
+                False,
                 cut_off).astype(jnp.int64).tolist()
 
 if __name__ == '__main__':
