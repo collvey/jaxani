@@ -17,9 +17,9 @@ class AniComputeShiftTest(unittest.TestCase):
       key = random.PRNGKey(0)
 
       self.params = [
-          ([[10, 0, 0], [0, 10, 0], [0, 0, 10]], [10, 10, 10], 10.0),
-          ([[6, 0, 0], [0, 7.5, 0], [0, 0, 8.2]], [6, 7.5, 8.2], 10.0),
-          ([[6.4, 0, 0], [0, 7.5, 0], [0, 0, 8.2]], [6, 7.5, 8.2], 8.0),
+          ([[10, 0, 0], [0, 10, 0], [0, 0, 10]], (10, 10, 10), 10.0),
+          ([[6, 0, 0], [0, 7.5, 0], [0, 0, 8.2]], (6, 7.5, 8.2), 10.0),
+          ([[6.4, 0, 0], [0, 7.5, 0], [0, 0, 8.2]], (6, 7.5, 8.2), 8.0),
       ]
     
     def testComputeShiftsMatch_withPbc(self):
@@ -31,7 +31,7 @@ class AniComputeShiftTest(unittest.TestCase):
         ).tolist()
 
         jax_shifts = compute_shifts(
-            *jax_cell,
+            jax_cell,
             True,
             cut_off).astype(jnp.int64).tolist()
 
@@ -47,7 +47,7 @@ class AniComputeShiftTest(unittest.TestCase):
         ).tolist()
 
         jax_shifts = compute_shifts(
-            *jax_cell,
+            jax_cell,
             False,
             cut_off).astype(jnp.int64).tolist()
 

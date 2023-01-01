@@ -70,33 +70,33 @@ class AniAevBenchmark(unittest.TestCase):
         self.torch_cell = tensor(test_cell).double()
         self.torch_pbc = tensor(test_pbc)
 
-    @measure_time
-    def testAevRadialLength_jax(self):
-        jax_radial_length = self.jax_aev_computer.radial_length
+    # @measure_time
+    # def testAevRadialLength_jax(self):
+    #     jax_radial_length = self.jax_aev_computer.radial_length
 
-    @measure_time
-    def testAevRadialLength_torch(self):
-        torch_radial_length = self.torch_aev_computer.radial_length
+    # @measure_time
+    # def testAevRadialLength_torch(self):
+    #     torch_radial_length = self.torch_aev_computer.radial_length
     
     @measure_time
     def testAevCalculation_withPbc_jax(self):
         jax_species, jax_aevs = self.jax_aev_computer.forward(
             self.jax_species_coordinates, cell=self.jax_cell, pbc=self.jax_pbc)
     
-    @measure_time
-    def testAevCalculation_withPbc_torch(self):
-        torch_species, torch_aevs = self.torch_aev_computer.forward(
-            self.torch_species_coordinates, cell=self.torch_cell, pbc=self.torch_pbc)
+    # @measure_time
+    # def testAevCalculation_withPbc_torch(self):
+    #     torch_species, torch_aevs = self.torch_aev_computer.forward(
+    #         self.torch_species_coordinates, cell=self.torch_cell, pbc=self.torch_pbc)
     
-    @measure_time
-    def testAevCalculation_noPbc_jax(self):
-        jax_species, jax_aevs = self.jax_aev_computer.forward(
-            self.jax_species_coordinates)
+    # @measure_time
+    # def testAevCalculation_noPbc_jax(self):
+    #     jax_species, jax_aevs = self.jax_aev_computer.forward(
+    #         self.jax_species_coordinates)
     
-    @measure_time
-    def testAevCalculation_noPbc_torch(self):
-        torch_species, torch_aevs = self.torch_aev_computer.forward(
-            self.torch_species_coordinates)
+    # @measure_time
+    # def testAevCalculation_noPbc_torch(self):
+    #     torch_species, torch_aevs = self.torch_aev_computer.forward(
+    #         self.torch_species_coordinates)
 
 if __name__ == '__main__':
     suite = unittest.defaultTestLoader.loadTestsFromTestCase(AniAevBenchmark)

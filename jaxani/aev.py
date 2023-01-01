@@ -20,15 +20,15 @@ class SpeciesAEV(NamedTuple):
     species: jnp.ndarray
     aevs: jnp.ndarray
 
-@partial(jax.jit, static_argnums=(0,1,2,3,4,))
-def compute_shifts(cell_x: int, cell_y: int, cell_z: int, pbc: bool, cutoff: float) -> jnp.ndarray:
+@partial(jax.jit, static_argnums=(0,1,2,))
+def compute_shifts(cell: Tuple[int, int, int], pbc: bool, cutoff: float) -> jnp.ndarray:
     """Compute the shifts of unit cell along the given cell vectors to make it
     large enough to contain all pairs of neighbor atoms with PBC under
     consideration
 
     Arguments:
-        cell (:class:`jnp.ndarray`): ndarray of shape (3, 3) of the three
-        vectors defining unit cell:
+        cell (:class:`jnp.ndarray`): ndarray of shape (3,) of the three
+        sizes defining unit cell:
             ndarray([[x1, y1, z1], [x2, y2, z2], [x3, y3, z3]])
         cutoff (float): the cutoff inside which atoms are considered pairs
         pbc (:class:`np.ndarray`): boolean storing if pbc is enabled for all 
@@ -38,8 +38,8 @@ def compute_shifts(cell_x: int, cell_y: int, cell_z: int, pbc: bool, cutoff: flo
         :class:`jnp.ndarray`: long ndarray of shifts. the center cell and
             symmetric cells are not included.
     """
-    cell = np.array([[cell_x, 0, 0],[0, cell_y, 0],[0, 0, cell_z]])
-    reciprocal_cell = np.linalg.inv(cell).T
+    cell_mat = np.array([[cell[0], 0, 0],[0, cell[1], 0],[0, 0, cell[2]]])
+    reciprocal_cell = np.linalg.inv(cell_mat).T
     inv_distances = np.linalg.norm(reciprocal_cell, axis=1)
     num_repeats = np.ceil(cutoff * inv_distances).astype(np.int64)
     num_repeats = np.where(pbc, num_repeats, np.zeros(num_repeats.shape))
@@ -83,6 +83,7 @@ def jax_unbind(input, dim=0):
     return [jax.lax.index_in_dim(
         input, i, axis=dim, keepdims=False) for i in range(input.shape[dim])]
 
+# @jax.jit
 def compute_aev(species: jnp.ndarray, coordinates: jnp.ndarray, triu_index: jnp.ndarray,
                 constants: Tuple[float, jnp.ndarray, jnp.ndarray, float, jnp.ndarray, jnp.ndarray, jnp.ndarray, jnp.ndarray],
                 sizes: Tuple[int, int, int, int, int], cell_shifts: Optional[Tuple[jnp.ndarray, jnp.ndarray]]) -> jnp.ndarray:
@@ -428,9 +429,9 @@ class AEVComputer():
         # Set up default cell and compute default shifts.
         # These values are used when cell and pbc switch are not given.
         cutoff = max(self.Rcr, self.Rca)
-        default_cell = np.ones(3)
+        default_cell = (1, 1, 1)
         default_pbc = False
-        default_shifts = compute_shifts(*default_cell, default_pbc, cutoff)
+        default_shifts = compute_shifts(default_cell, default_pbc, cutoff)
         # self.register_buffer('default_cell', default_cell)
         # self.register_buffer('default_shifts', default_shifts)
         self.default_cell = default_cell
@@ -528,9 +529,8 @@ class AEVComputer():
         else:
             assert (cell is not None and pbc is not None)
             cutoff = max(self.Rcr, self.Rca)
-            cell_x, cell_y, cell_z = cell
-            shifts = compute_shifts(cell_x, cell_y, cell_z, pbc, cutoff)
-            cell = jnp.array([[cell_x, 0, 0],[0, cell_y, 0],[0, 0, cell_z]])
+            shifts = compute_shifts(cell, pbc, cutoff)
+            cell = np.array([[cell[0], 0, 0],[0, cell[1], 0],[0, 0, cell[2]]])
             aev = compute_aev(species, coordinates, self.triu_index, self.constants(), self.sizes, (cell, shifts))
 
         return SpeciesAEV(species, aev)
