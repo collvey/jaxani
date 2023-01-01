@@ -5,7 +5,6 @@ import sys
 sys.path.append(os.path.join(os.path.dirname(__file__), '../'))
 
 from flax.training import checkpoints
-from functools import partial
 from jaxani.constants import Constants
 from jaxani.aev import AEVComputer
 from jaxani.nn import SpeciesConverter
@@ -18,7 +17,6 @@ from neurochem.parse_resources import parse_neurochem_resources
 CKPT_DIR = os.path.join(os.path.dirname(__file__), '../test/test_ckpts')
 CKPT_PREFIX = 'test_ensemble_'
 
-@jax.jit
 def jax_energy_from_restored_state(test_coordinates):
     test_species = [[6, 1, 1, 1, 1]] # static
 
