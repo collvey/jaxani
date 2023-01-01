@@ -21,13 +21,14 @@ class SpeciesAEV(NamedTuple):
     aevs: jnp.ndarray
 
 @partial(jax.jit, static_argnums=(0,1,2,))
-def compute_shifts(cell: Tuple[int, int, int], pbc: Tuple[bool, bool, bool], cutoff: float) -> jnp.ndarray:
+def compute_shifts(cell: Tuple[Tuple[float,float,float],Tuple[float,float,float],Tuple[float,float,float]],
+        pbc: Tuple[bool, bool, bool], cutoff: float) -> jnp.ndarray:
     """Compute the shifts of unit cell along the given cell vectors to make it
     large enough to contain all pairs of neighbor atoms with PBC under
     consideration
 
     Arguments:
-        cell (:class:`Tuple[int, int, int]`): tuple of shape (3,) of the three
+        cell (:class:`Tuple[float, float, float]`): tuple of shape (3,) of the three
         sizes defining unit cell:
             (cell_x, cell_y, cell_z)
         cutoff (float): the cutoff inside which atoms are considered pairs
@@ -38,7 +39,7 @@ def compute_shifts(cell: Tuple[int, int, int], pbc: Tuple[bool, bool, bool], cut
         :class:`jnp.ndarray`: long ndarray of shifts. the center cell and
             symmetric cells are not included.
     """
-    cell_mat = np.array([[cell[0], 0, 0],[0, cell[1], 0],[0, 0, cell[2]]])
+    cell_mat = np.array(cell)
     reciprocal_cell = np.linalg.inv(cell_mat).T
     inv_distances = np.linalg.norm(reciprocal_cell, axis=1)
     num_repeats = np.ceil(cutoff * inv_distances).astype(np.int64)
@@ -429,8 +430,8 @@ class AEVComputer():
         # Set up default cell and compute default shifts.
         # These values are used when cell and pbc switch are not given.
         cutoff = max(self.Rcr, self.Rca)
-        default_cell = (1, 1, 1)
-        default_pbc = False
+        default_cell = tuple(map(tuple, np.eye(3)))
+        default_pbc = (False, False, False)
         default_shifts = compute_shifts(default_cell, default_pbc, cutoff)
         # self.register_buffer('default_cell', default_cell)
         # self.register_buffer('default_shifts', default_shifts)
@@ -530,7 +531,7 @@ class AEVComputer():
             assert (cell is not None and pbc is not None)
             cutoff = max(self.Rcr, self.Rca)
             shifts = compute_shifts(cell, pbc, cutoff)
-            cell = np.array([[cell[0], 0, 0],[0, cell[1], 0],[0, 0, cell[2]]])
+            cell = jnp.array(cell)
             aev = compute_aev(species, coordinates, self.triu_index, self.constants(), self.sizes, (cell, shifts))
 
         return SpeciesAEV(species, aev)

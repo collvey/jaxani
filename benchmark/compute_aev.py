@@ -13,7 +13,6 @@ from torch import tensor
 
 class AniAevBenchmark(unittest.TestCase):
     def setUp(self):
-        # Setup for jax
         test_species = [[0, 0, 1, 2, 0, 3]]
         test_coordinates = [[[1, 0, 6], 
                             [2, 0, 5], 
@@ -21,11 +20,12 @@ class AniAevBenchmark(unittest.TestCase):
                             [4, 0, 3], 
                             [5, 6, 2], 
                             [6, 0, 1]]]
-        test_cell = [[5.2, 0, 0],
-                    [0, 3.5, 0],
-                    [0, 0, 5]]
-        test_pbc = [True, True, True]
+        test_cell = ((5.2, 0, 0),
+                    (0, 3.5, 0),
+                    (0, 0, 5))
+        test_pbc = (True, True, True)
 
+        # Setup for jax
         jax_consts = {
             'Rcr': 5.1, 
             'Rca': 3.5, 
@@ -45,8 +45,8 @@ class AniAevBenchmark(unittest.TestCase):
         self.jax_coordinates = jnp.array(test_coordinates)
         self.jax_species_coordinates = SpeciesCoordinates(
             species=self.jax_species, coordinates=self.jax_coordinates)
-        self.jax_cell = tuple(np.diag(test_cell))
-        self.jax_pbc = tuple(test_pbc)
+        self.jax_cell = test_cell
+        self.jax_pbc = test_pbc
 
         # Setup for torch
         torch_consts = {
